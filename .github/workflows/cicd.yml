@@ -1,0 +1,27 @@
+name: CI/CD Pipeline
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.RHEL_VM_SSH_KEY }}
+          known_hosts: "just-a-placeholder-so-we-dont-get-errors"
+
+      - name: Deploy to RHEL VM
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              ${{ secrets.RHEL_VM_USER }}@${{ secrets.RHEL_VM_IP }} \
+              "cd /tmp && \
+               git clone https://github.com/$GITHUB_REPOSITORY.git && \
+               cd $(basename $GITHUB_REPOSITORY) && \
+               docker build -t flask-app . && \
+               docker stop flask-app || true && \
+               docker rm flask-app || true && \
+               docker run -d -p 5000:5000 --name flask-app flask-app"
